@@ -2,8 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline'">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>幼儿园签到系统</title>
     <style>
         body {
@@ -69,9 +70,21 @@
             background-color: #fff;
             border-radius: 10px;
         }
+        .noscript-warning {
+            color: red;
+            padding: 20px;
+            border: 2px solid red;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
+    <noscript>
+        <div class="noscript-warning">
+            请启用JavaScript功能以正常使用签到系统！
+        </div>
+    </noscript>
+    
     <div class="header">
         <img src="logo.png" alt="幼儿园logo">
         <h1>幼儿签到系统</h1>
@@ -101,7 +114,7 @@
         </div>
     </div>
     
-    <!-- 管理员区域 - 可以添加密码保护 -->
+    <!-- 管理员区域 -->
     <div class="admin-section" id="adminSection">
         <h2>数据管理</h2>
         <button onclick="exportData()">导出签到数据(Excel)</button>
@@ -110,103 +123,123 @@
     </div>
 
     <script>
-        // 显示/隐藏管理员区域
-        document.getElementById('adminSection').style.display = 'none';
-        
-        // 显示管理员区域的简单密码验证
-        const password = prompt("请输入管理员密码(默认:123)");
-        if (password === "123") {
-            document.getElementById('adminSection').style.display = 'block';
-            loadDataPreview();
-        }
+        (function() {
+            // 显示/隐藏管理员区域
+            document.getElementById('adminSection').style.display = 'none';
+            
+            // 显示管理员区域的简单密码验证
+            try {
+                const password = prompt("请输入管理员密码");
+                if (password === "123") {
+                    document.getElementById('adminSection').style.display = 'block';
+                    loadDataPreview();
+                }
+            } catch(e) {
+                console.error("密码输入错误:", e);
+            }
 
-        // 提交表单
-        document.getElementById('signForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // 获取表单数据
-            const childName = document.getElementById('childName').value;
-            const className = document.getElementById('className').value;
-            const parentName = document.getElementById('parentName').value;
-            const signTime = new Date().toLocaleString('zh-CN');
-            
-            // 存储数据到localStorage
-            let signData = JSON.parse(localStorage.getItem('signData') || '[]');
-            signData.push({ 
-                幼儿姓名: childName, 
-                幼儿班级: className, 
-                家长姓名: parentName, 
-                签到时间: signTime 
-            });
-            localStorage.setItem('signData', JSON.stringify(signData));
-            
-            // 显示成功信息
-            document.getElementById('signForm').style.display = 'none';
-            document.getElementById('successContainer').style.display = 'block';
-            
-            // 5秒后重置表单
-            setTimeout(() => {
-                document.getElementById('signForm').reset();
-                document.getElementById('signForm').style.display = 'block';
-                document.getElementById('successContainer').style.display = 'none';
-            }, 5000);
-        });
-        
-        // 导出Excel数据
-        function exportData() {
-            const signData = JSON.parse(localStorage.getItem('signData') || '[]');
-            if (signData.length === 0) {
-                alert('没有签到数据');
-                return;
-            }
-            
-            // 创建CSV内容
-            let csv = '\uFEFF'; // UTF-8 BOM
-            csv += '幼儿姓名,幼儿班级,家长姓名,签到时间\n';
-            
-            signData.forEach(item => {
-                csv += `"${item.幼儿姓名}","${item.幼儿班级}","${item.家长姓名}","${item.签到时间}"\n`;
+            // 提交表单
+            document.getElementById('signForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                try {
+                    // 获取表单数据
+                    const childName = document.getElementById('childName').value;
+                    const className = document.getElementById('className').value;
+                    const parentName = document.getElementById('parentName').value;
+                    const signTime = new Date().toLocaleString('zh-CN');
+                    
+                    // 存储数据到localStorage
+                    let signData = JSON.parse(localStorage.getItem('signData') || '[]');
+                    signData.push({ 
+                        幼儿姓名: childName, 
+                        幼儿班级: className, 
+                        家长姓名: parentName, 
+                        签到时间: signTime 
+                    });
+                    localStorage.setItem('signData', JSON.stringify(signData));
+                    
+                    // 显示成功信息
+                    document.getElementById('signForm').style.display = 'none';
+                    document.getElementById('successContainer').style.display = 'block';
+                    
+                    // 5秒后重置表单
+                    setTimeout(() => {
+                        document.getElementById('signForm').reset();
+                        document.getElementById('signForm').style.display = 'block';
+                        document.getElementById('successContainer').style.display = 'none';
+                    }, 5000);
+                } catch(error) {
+                    console.error("表单提交错误:", error);
+                    alert("提交失败，请重试或联系管理员");
+                }
             });
             
-            // 创建下载链接
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `幼儿签到数据_${new Date().toLocaleDateString()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-        // 清空数据
-        function clearData() {
-            if (confirm('确定要清空所有签到数据吗？此操作不可撤销！')) {
-                localStorage.removeItem('signData');
-                loadDataPreview();
-                alert('数据已清空');
+            // 导出Excel数据
+            window.exportData = function() {
+                try {
+                    const signData = JSON.parse(localStorage.getItem('signData') || '[]');
+                    if (signData.length === 0) {
+                        alert('没有签到数据');
+                        return;
+                    }
+                    
+                    // 创建CSV内容
+                    let csv = '\uFEFF'; // UTF-8 BOM
+                    csv += '幼儿姓名,幼儿班级,家长姓名,签到时间\n';
+                    
+                    signData.forEach(item => {
+                        csv += `"${item.幼儿姓名}","${item.幼儿班级}","${item.家长姓名}","${item.签到时间}"\n`;
+                    });
+                    
+                    // 创建下载链接
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `幼儿签到数据_${new Date().toLocaleDateString()}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch(e) {
+                    console.error("导出数据错误:", e);
+                    alert("导出失败，请重试");
+                }
+            };
+            
+            // 清空数据
+            window.clearData = function() {
+                if (confirm('确定要清空所有签到数据吗？此操作不可撤销！')) {
+                    localStorage.removeItem('signData');
+                    loadDataPreview();
+                    alert('数据已清空');
+                }
+            };
+            
+            // 加载数据预览
+            function loadDataPreview() {
+                try {
+                    const signData = JSON.parse(localStorage.getItem('signData') || '[]');
+                    const preview = document.getElementById('dataPreview');
+                    
+                    if (signData.length === 0) {
+                        preview.innerHTML = '<p>暂无签到数据</p>';
+                        return;
+                    }
+                    
+                    let html = '<h3>最近5条签到记录:</h3><ul>';
+                    const recentData = signData.slice(-5).reverse();
+                    recentData.forEach(item => {
+                        html += `<li>${item.幼儿姓名} (${item.幼儿班级}) - ${item.家长姓名} - ${item.签到时间}</li>`;
+                    });
+                    html += `</ul><p>总记录数: ${signData.length} 条</p>`;
+                    
+                    preview.innerHTML = html;
+                } catch(e) {
+                    console.error("加载数据预览错误:", e);
+                }
             }
-        }
-        
-        // 加载数据预览
-        function loadDataPreview() {
-            const signData = JSON.parse(localStorage.getItem('signData') || '[]');
-            const preview = document.getElementById('dataPreview');
-            
-            if (signData.length === 0) {
-                preview.innerHTML = '<p>暂无签到数据</p>';
-                return;
-            }
-            
-            let html = '<h3>最近5条签到记录:</h3><ul>';
-            const recentData = signData.slice(-5).reverse();
-            recentData.forEach(item => {
-                html += `<li>${item.幼儿姓名} (${item.幼儿班级}) - ${item.家长姓名} - ${item.签到时间}</li>`;
-            });
-            html += `</ul><p>总记录数: ${signData.length} 条</p>`;
-            
-            preview.innerHTML = html;
-        }
+        })();
     </script>
 </body>
 </html>
